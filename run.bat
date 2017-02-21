@@ -1,0 +1,1 @@
+F:\skynet-vs2013new\lua.exe F:\skynet-vs2013new\mypro\config
