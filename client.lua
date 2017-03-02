@@ -9,13 +9,14 @@ local helper = require "helper"
 local socket = require "clientsocket"
 
 print("hello 1 ")
-
 local fd = assert(socket.connect("127.0.0.1", 8888))
 
 print("hello 2")
 
 local function send_package(fd, pack)
+	print(pack.. " "..#pack)
 	local package = string.pack(">s2", pack)
+	print(helper.hex(package,10))
 	socket.send(fd, package)
 end
 

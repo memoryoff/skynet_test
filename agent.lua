@@ -42,7 +42,9 @@ local function request(str)
 end
 
 local function send_package(pack)
-	pack = helper.serialize(pack)
+	if type(pack) == "table" then
+		pack = helper.serialize(pack)	
+	end
 	local package = string.pack(">s2", pack)
 	socket.write(client_fd, package)
 end
@@ -80,12 +82,12 @@ function CMD.start(conf)
 	local fd = conf.client
 	local gate = conf.gate
 	WATCHDOG = conf.watchdog
-	-- skynet.fork(function()
-	-- 	while true do
-	-- 		send_package(send_request "heartbeat")
-	-- 		skynet.sleep(500)
-	-- 	end
-	-- end)
+	skynet.fork(function()
+		while true do
+			send_package("heartbeat")
+			skynet.sleep(500)
+		end
+	end)
 
 	client_fd = fd
 	skynet.call(gate, "lua", "forward", fd)
