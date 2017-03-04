@@ -1,1 +1,1 @@
-F:\skynet-vs2013new\lua.exe F:\skynet-vs2013new\mypro\config
+F:\skynet-vs2013new\skynet.exe F:\skynet-vs2013new\mypro\config

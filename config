@@ -17,3 +17,17 @@ snax = root.."skynet_test/?.lua;"..root.."test/?.lua"
 -- snax_interface_g = "snax_g"
 cpath = root.."cservice/?.so"
 -- daemon = "./skynet.pid"
+
+mysql_maxconn = 10					-- mysql数据库最大连接数
+mysql_host = '127.0.0.1'	-- mysql数据库主机
+mysql_port = 3306		-- mysql数据库端口
+mysql_db = "skynet"		-- mysql数据库库名
+mysql_user = "root"	-- mysql数据库帐号
+mysql_pwd = "admin"		-- mysql数据库密码
+
+redis_maxinst = 1			-- redis最大实例数
+
+redis_host1 = "127.0.0.1"	-- redis数据库IP
+redis_port1 = 6379			-- redis数据库端口
+redis_auth1 = "123456"		-- redis数据库密码
+

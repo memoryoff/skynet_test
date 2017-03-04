@@ -16,5 +16,7 @@ skynet.start(function()
 		nodelay = true,
 	})
 	skynet.error("Watchdog listen on", 8888)
+	skynet.newservice("dbmgr")
+	skynet.call("dbmgr", "lua", "start")
 	skynet.exit()
 end)
