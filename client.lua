@@ -1,6 +1,7 @@
-package.cpath = "F:/skynet-vs2013new/luaclib/?.so"
-package.path = "F:/skynet-vs2013new/lualib/?.lua;F:/skynet-vs2013new/mypro/?.lua"
-
+-- package.cpath = "F:/skynet-vs2013new/luaclib/?.so"
+-- package.path = "F:/skynet-vs2013new/lualib/?.lua;F:/skynet-vs2013new/mypro/?.lua"
+package.cpath = "/Users/goku/Desktop/skynet/luaclib/?.so"
+package.path = "/Users/goku/Desktop/skynet/lualib/?.lua;/Users/goku/Desktop/skynet/skynet_test/?.lua"
 
 if _VERSION ~= "Lua 5.3" then
 	error "Use lua 5.3"
@@ -8,11 +9,9 @@ end
 local helper = require "helper"
 local socket = require "clientsocket"
 
-print("hello 1 ")
 
 local fd = assert(socket.connect("127.0.0.1", 8888))
 
-print("hello 2")
 
 local function send_package(fd, pack)
 	local package = string.pack(">s2", pack)
@@ -75,7 +74,6 @@ local function dispatch_package()
 		print_package(v)
 	end
 end
-print("hello 2")
 send_request{cmd = "handshake"}
 send_request{cmd = "set", key = "name", value = "hxl" }
 while true do
@@ -95,4 +93,3 @@ while true do
 	end
 end
 
-print("hello")
