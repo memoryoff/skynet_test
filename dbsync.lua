@@ -18,7 +18,7 @@ end
 local function sync_impl()
     while true do
         for k, sql in pairs(queue) do
-            skynet.call("mysqlpool", "lua", "execute", sql)
+            skynet.call("mysqlpool", "lua", "execute", sql,true)
             queue[k] = nil
         end
         skynet.sleep(500)
