@@ -462,7 +462,7 @@ function CMD.update(tbname, row,where)
 end
 
 -- order by  asc 升序  desc 降序
-function CMD.load(tbname,where,order)
+function CMD.load(tbname,where)
 	local offset = 0
 	local data = {}
 	local sql = nil
@@ -479,7 +479,7 @@ function CMD.load(tbname,where,order)
 
  		-- helper.dump(rs)
 
-		if #rs <= 0 then break end
+		if not rs or #rs <= 0 then break end
 
 		for _, row in pairs(rs) do
 			table.insert(data, row)

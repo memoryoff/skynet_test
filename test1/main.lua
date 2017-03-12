@@ -19,22 +19,25 @@ skynet.start(function()
 	skynet.call("dbmgr", "lua", "start")
 
 
-	-- local res = skynet.call("dbmgr","lua","load","test1","where sex = 6")
+	-- local res = skynet.call("dbmgr","lua","load","user","where id = 1")
 	-- helper.dump(res)
 
-	-- local res = skynet.call("dbmgr","lua","delete","test1","where sex = 45")
+	-- skynet.call("dbmgr","lua","stop")
+
+
+	-- local res = skynet.call("dbmgr","lua","delete","user","where sex = 45")
 	-- helper.dump(res)
 
 	-- local res = skynet.call("dbmgr","lua","delete","test1")
 	-- helper.dump(res)
 
-	-- local str = {id = 1,phone = 1,name = 5,sex = 3}
-	-- local res = skynet.call("dbmgr","lua","add","test1",str)
-	-- helper.dump(res)
-
-	local str = {id = 10,phone = 1,name = "wpp",sex = 3}
-	local res = skynet.call("dbmgr","lua","update","test1",str,"where id = 4")
+	local str = {uid = "test1",pass = 123,name = "test1",sex="1"}
+	local res = skynet.call("dbmgr","lua","add","user",str)
 	helper.dump(res)
+
+	-- local str = {id = 10,phone = 1,name = "wpp",sex = 3}
+	-- local res = skynet.call("dbmgr","lua","update","test1",str,"where id = 4")
+	-- helper.dump(res)
 
 	skynet.exit()
 end)

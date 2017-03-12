@@ -51,7 +51,7 @@ function CMD.stop()
 	for _, db in pairs(pool) do
 		db:disconnect()
 	end
-	pool = {}
+	-- pool = {}
 end
 
 skynet.start(function()
