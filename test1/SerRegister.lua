@@ -10,6 +10,7 @@ local socketdriver = require "socketdriver"
 local assert = assert
 local b64encode = crypt.base64encode
 local b64decode = crypt.base64decode
+local helper = require "helper"
 
 local handler = {}
 
@@ -33,13 +34,17 @@ local function register(msg)
 			socketdriver.send(fd, netpack.pack(b64encode("some wrong")))
 		end
 	end
-	gateserver.closeclient(fd)
+	
 end
 
 local function handlerPhase(fd,msg,sz)
-	if handshake[fd].phase == 1 then
+	if handshake[fd].phase == 1 then -- 发送挑战
 		handshake[fd].challenge = crypt.randomkey()
-		socketdriver.send(fd, netpack.pack(b64encode(handshake[fd].challenge)))
+		local sendData = b64encode(handshake[fd].challenge)
+		socketdriver.send(fd, netpack.pack(sendData))
+		print("challenge = "..handshake[fd].challenge)
+		print("sendData = "..sendData)
+		print(helper.hex(handshake[fd].challenge))
 	elseif handshake[fd].phase == 2 then
 		local base64ClientKey = netpack.tostring(msg, sz)
 		handshake[fd].clientkey = b64decode(base64ClientKey)
@@ -62,10 +67,8 @@ local function handlerPhase(fd,msg,sz)
 		local base64Msg = netpack.tostring(msg, sz)
 		local userMsg = b64decode(base64Msg)
 		local res = register(userMsg)
-		if res == 1 then 
-			--todo
-		elseif res
-		end
+		gateserver.closeclient(fd)
+		return
 	end
 	handshake[fd].phase = handshake[fd].phase + 1
 end
@@ -82,9 +85,11 @@ function handler.connect(fd, addr)
 		handshake[fd] = {addr,phase = 1}
 		gateserver.openclient(fd)
 		handlerPhase(fd)
+		print("new connect")
 end
 
 function handler.disconnect(fd)
+	print("disconnect")
 	handshake[fd] = nil
 	-- local c = connection[fd]
 	-- if c then
@@ -97,14 +102,35 @@ function handler.disconnect(fd)
 end
 
 function handler.message(fd, msg, sz)
+		print("recieve msg")
 		local client = handshake[fd]
 		if client then
 			handlerPhase(fd,msg,sz)
 		else
 			skynet.error("no handshake")
 		end
+
+		-- local data = netpack.tostring(msg, sz)
+		-- print("data = "..data)
+
+		-- data = "0123456789"
+		-- local data = string.pack(">s2",data)
+		-- print(type(data))
+		-- print(#data)
+		-- print(data)
+		-- socketdriver.send(fd,data)
+
+		-- print("data = "..string.unpack(">s2",data))
+end
+
+function handler.open(source,conf)
+	-- for k,v in pairs(conf) do
+	-- 	print(k,v)
+	-- end
+	-- print(SERVICE_NAME)
+	-- skynet.register(SERVICE_NAME)
 end
 
 
 
-return gameserver.start(handler)
+return gateserver.start(handler)
