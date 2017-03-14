@@ -1,18 +1,42 @@
 local net = require("framework.cc.net.init")
 local helper = require("helper")
-
+local scrypt = require("scrypt")
 
 local SceneRegister = class("SceneRegister",import(".ViewBase"))
 
 SceneRegister.RESOURCE_FILENAME = "RegisterView.json"   
 
+function SceneRegister:sendData(data) 
+	data = scrypt.base64encode(data)
+	self.socket_:send(string.pack(">P",data))
+end
+
 function SceneRegister:handler()
 	if self.phase == 1 then
-		self.socket_:connect("127.0.0.1", 8888, true)
+		self.socket_:connect("127.0.0.1", 8888, false)
 		-- self.socket_:send(sendData) 	
-	
 	elseif self.phase == 2 then
-
+		self.clientkey = scrypt.randomkey()
+		print("clientkey = ".. self.clientkey)
+		-- local data = scrypt.base64encode(scrypt.dhexchange(self.clientkey))
+		-- self.socket_:send(string.pack(">P",data))
+		self:sendData(scrypt.dhexchange(self.clientkey))
+	elseif self.phase == 3 then
+		local hmac = scrypt.hmac64(self.challenge, self.secret)
+		-- self.socket_:send(string.pack(">P",scrypt.base64encode(hmac)))
+		self:sendData(hmac)
+	elseif self.phase == 4 then
+		local id = self.edtId:getString()
+		local pass = self.edtPass1:getString()
+		local nick = self.edtNick:getString()
+		local sex = 0
+		if self.btMan:isButtonSelected() then
+			sex = 1
+		end
+		local data = id..":"..pass..":"..nick..":"..tostring(sex)
+		print("send register = "..data)
+		data = scrypt.desencode(self.secret, data)
+		self:sendData(data)
 	end
 	
 end 
@@ -22,7 +46,11 @@ local binding = {
     btCommit = {varname = "btCommit",events = { {event = "touch",method = "onCommit"} }} ,
     btMan = {varname = "btMan",events = { {event = "checkBoxButton",method = "onCheckBox"} }} ,
     btWomen = {varname = "btWomen",events = { {event = "checkBoxButton",method = "onCheckBox"} }} ,
-    btTermsOfService = {varname = "btTermsOfService"}
+    btTermsOfService = {varname = "btTermsOfService"},
+    edtAccounts = {varname = "edtId"},
+    edtPassword = {varname = "edtPass1"},
+    edtRepeat = {varname = "edtPass2"},
+    edtNickName = {varname = "edtNick"},
     }
 
 SceneRegister.RESOURCE_BINDING = binding
@@ -30,7 +58,7 @@ SceneRegister.RESOURCE_BINDING = binding
 function SceneRegister:onCreate()
 	self.btMan:onButtonClicked(handler(self, self.onCheckBox))
 	self.btWomen:onButtonClicked(handler(self, self.onCheckBox))
-
+	self.btMan:setButtonSelected(true)
 
 	local socket = net.SocketTCP.new()
 	socket:setName("TestSocketTcp")
@@ -45,8 +73,6 @@ function SceneRegister:onCreate()
 
 	self.socket_ = socket
 
-
-
 end
 
 
@@ -56,11 +82,31 @@ function SceneRegister:onBack(event)
 end
 
 function SceneRegister:onCommit(event)
+	if self.edtId:getString()=="" then
+		device.showAlert("", app.language.idNo)
+		return
+	end
+
+	if  self.edtPass1:getString()=="" then
+		device.showAlert("",app.language.psNo)
+		return
+	end
+
+	if self.edtPass1:getString() ~= self.edtPass2:getString() then
+		device.showAlert("",app.language.psDif)
+		return
+	end
+
+	if self.edtNick:getString()=="" then
+		device.showAlert("",app.language.nickNo)
+		return
+	end
+
 	if  self.btTermsOfService:isButtonSelected() then
 		self.phase = 1
 		self:handler()
 	else
-		printInfo("not ok")
+		device.showAlert("",app.language.agreeNo)
 	end
 end
 
@@ -103,6 +149,26 @@ function SceneRegister:tcpData(event)
 	print("SocketTCP receive data:" .. data)
 	if self.phase == 1 then
 		self.challenge = crypto.decodeBase64(data)
+		self.phase = 2
+		self:handler()
+	elseif self.phase == 2 then
+		data = scrypt.base64decode(data)
+		self.secret = scrypt.dhsecret(data, self.clientkey)
+		print("sceret is ", scrypt.hexencode(self.secret))
+		self.phase = 3
+		self:handler()
+	elseif self.phase == 3 then
+		data = scrypt.base64decode(data)
+		if data == "ok" then
+			self.phase = 4
+			self:handler()
+		else
+			self.socket_:close()
+		end
+		print(data)
+	elseif self.phase == 4 then
+		data = scrypt.base64decode(data)
+		print(data)
 	end
 end
 
