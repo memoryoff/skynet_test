@@ -17,15 +17,17 @@ local handler = {}
 local socketHandler = {}
 local handshake = {}
 
-local function register(msg)
-	print(mgs)
+local function register(fd,msg)
 	local uid, secret,name,sex = string.match(msg, "([^:]*):([^:]*):([^:]*):([^:]*)")
-	local res = skynet.call("dbmgr","load","where uid = "..uid)
-	if res[1] then
+	print(uid, secret,name,sex)
+	local res = skynet.call("dbmgr","lua","load","test1","where uid = "..uid)
+	helper.dump(res)
+	if next(res) == nil then
+		socketdriver.send(fd, netpack.pack(b64encode("mysql error")))
+	elseif res[1] then
 		socketdriver.send(fd, netpack.pack(b64encode("already have id")))
 	else
-		skynet.call("dbmgr","add",{ uid = uid,pass = secret,name = name,sex = sex})
-		res = socketdriver.send(fd, netpack.pack(b64encode("")))
+		res = skynet.call("dbmgr","lua","add","test1",{ uid = uid,pass = secret,name = name,sex = sex})
 		if res.affected_rows then
 			socketdriver.send(fd, netpack.pack(b64encode("register ok !")))
 		elseif res.err then
@@ -38,14 +40,15 @@ local function register(msg)
 end
 
 local function handlerPhase(fd,msg,sz)
-	if handshake[fd].phase == 1 then -- 发送挑战
+	if handshake[fd].phase == 1 then -- 主动向客户端发送挑战
 		handshake[fd].challenge = crypt.randomkey()
 		local sendData = b64encode(handshake[fd].challenge)
 		socketdriver.send(fd, netpack.pack(sendData))
 		print("challenge = "..handshake[fd].challenge)
 		print("sendData = "..sendData)
 		print(helper.hex(handshake[fd].challenge))
-	elseif handshake[fd].phase == 2 then
+	elseif handshake[fd].phase == 2 then -- 等待client发送clientkey，向client发送dhexchange(serverkey),保存secret
+		print("receive clientkey")
 		local base64ClientKey = netpack.tostring(msg, sz)
 		handshake[fd].clientkey = b64decode(base64ClientKey)
 		if #handshake[fd].clientkey ~= 8 then
@@ -56,17 +59,22 @@ local function handlerPhase(fd,msg,sz)
 		handshake[fd].serverkey = crypt.randomkey()
 		socketdriver.send(fd, netpack.pack(b64encode(crypt.dhexchange(handshake[fd].serverkey))))
 		handshake[fd].secret = crypt.dhsecret(handshake[fd].clientkey, handshake[fd].serverkey)
-	elseif handshake[fd].phase == 3 then
+	elseif handshake[fd].phase == 3 then-- 接受client发送的hmac，确认挑战是否正确
+		print("receive client hmac")
 		local base64Response = netpack.tostring(msg, sz)
 		local hmac = crypt.hmac64(handshake[fd].challenge, handshake[fd].secret)
 		if hmac ~= b64decode(base64Response) then
-			skynet.error("challenge failed")
+			socketdriver.send(fd, netpack.pack(b64encode("fail")))
 			gateserver.closeclient(fd)
+			skynet.error("challenge failed")
+		else
+			socketdriver.send(fd, netpack.pack(b64encode("ok")))
 		end
 	elseif handshake[fd].phase == 4 then
-		local base64Msg = netpack.tostring(msg, sz)
-		local userMsg = b64decode(base64Msg)
-		local res = register(userMsg)
+		local data = netpack.tostring(msg, sz)
+		data = b64decode(data)
+		data = crypt.desdecode(handshake[fd].secret, data)
+		local res = register(fd,data)
 		gateserver.closeclient(fd)
 		return
 	end
