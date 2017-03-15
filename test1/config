@@ -35,3 +35,20 @@ redis_host1 = "127.0.0.1"	-- redis数据库IP
 redis_port1 = 6379			-- redis数据库端口
 redis_auth1 = "123456"		-- redis数据库密码
 
+serLogin_host = "127.0.0.1"
+serLogin_port = 8001
+serLogin_multilogin = false
+serLogin_name = "serLogin"
+
+serRegister_host = "127.0.0.1"
+serRegister_port = 8889
+serRegister_maxclient = 64
+serRegister_name = "serRegister"
+
+-- 转发服务器，client的消息转发到agent，并缓存返回的消息
+serGate_host = "127.0.0.1" 
+serGate_port = 9001
+serGate_maxclient = 1024
+serGate_name = "serGate"
+
+

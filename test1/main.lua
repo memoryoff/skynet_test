@@ -15,23 +15,34 @@ skynet.start(function()
 	end
 	skynet.newservice("debug_console",8000)
 
-
 	
 	skynet.newservice("dbmgr")
 	skynet.call("dbmgr", "lua", "start")
 
-	local addr = skynet.newservice("SerRegister")
-	skynet.call(addr,"lua","open",{
-		address = "127.0.0.1",
-		port = 8888,
-		maxclient = 64,
-		name = "SerRegister"
+
+	local register = skynet.newservice("SerRegister")
+	skynet.call(register,"lua","open",{
+		address = skynet.getenv("serRegister_host"),
+		port = skynet.getenv("serRegister_port"),
+		maxclient = skynet.getenv("serRegister_maxclient"),
+		name = skynet.getenv("serRegister_name"),
+	})
+
+	local login = skynet.newservice("SerLogin")
+
+	local gate = skynet.newservice("SerGame",login)
+	skynet.call(gate,"lua","open",{
+		address = skynet.getenv("serGate_host"),
+		port = skynet.getenv("serGate_port"),
+		maxclient = skynet.getenv("serGate_maxclient"),
+		servername = skynet.getenv("serGate_name"),
 	})
 
 	
-	-- local res = skynet.call("dbmgr","lua","load","user","where id = 1")
+	-- local res = skynet.call("dbmgr","lua","load","test1","where id = 1")
 	-- helper.dump(res)
-
+	-- local res = skynet.call("dbmgr","lua","load","user","where uid = ".."'abc'")
+	-- helper.dump(res)
 	-- skynet.call("dbmgr","lua","stop")
 
 

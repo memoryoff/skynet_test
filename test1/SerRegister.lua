@@ -20,14 +20,13 @@ local handshake = {}
 local function register(fd,msg)
 	local uid, secret,name,sex = string.match(msg, "([^:]*):([^:]*):([^:]*):([^:]*)")
 	print(uid, secret,name,sex)
-	local res = skynet.call("dbmgr","lua","load","test1","where uid = "..uid)
+	local res = skynet.call("dbmgr","lua","load","user","where uid = ".."'"..uid.."'")
+	-- local res = skynet.call("dbmgr","lua","load","test1","where id = 1")
 	helper.dump(res)
-	if next(res) == nil then
-		socketdriver.send(fd, netpack.pack(b64encode("mysql error")))
-	elseif res[1] then
+	if res[1] then
 		socketdriver.send(fd, netpack.pack(b64encode("already have id")))
 	else
-		res = skynet.call("dbmgr","lua","add","test1",{ uid = uid,pass = secret,name = name,sex = sex})
+		res = skynet.call("dbmgr","lua","add","user",{ uid = uid,pass = secret,nick = name,sex = sex})
 		if res.affected_rows then
 			socketdriver.send(fd, netpack.pack(b64encode("register ok !")))
 		elseif res.err then
