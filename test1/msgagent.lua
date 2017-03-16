@@ -15,6 +15,10 @@ local userid, subid
 
 local CMD = {}
 
+function CMD.connect( ... )
+	-- body
+end
+
 function CMD.login(source, uid, sid, secret)
 	-- you may use secret to make a encrypted data stream
 	skynet.error(string.format("%s is login", uid))
@@ -45,8 +49,10 @@ end
 skynet.start(function()
 	-- If you want to fork a work thread , you MUST do it in CMD.login
 	skynet.dispatch("lua", function(session, source, command, ...)
-		local f = assert(CMD[command])
-		skynet.ret(skynet.pack(f(source, ...)))
+		local f = CMD[command]
+		if f then
+			skynet.ret(skynet.pack(f(source, ...)))
+		end
 	end)
 
 	skynet.dispatch("client", function(_,_, msg)

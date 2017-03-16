@@ -48,7 +48,7 @@ serRegister_name = "serRegister"
 -- 转发服务器，client的消息转发到agent，并缓存返回的消息
 serGate_host = "127.0.0.1" 
 serGate_port = 9001
-serGate_maxclient = 1024
+--serGate_maxclient = 1024
 serGate_name = "serGate"
 
 

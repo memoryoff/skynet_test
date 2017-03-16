@@ -5,6 +5,7 @@
 local login = require "snax.loginserver"
 local crypt = require "crypt"
 local skynet = require "skynet"
+local helper = require "helper"
 
 local server = {
 	host = skynet.getenv("serLogin_host"),
@@ -27,7 +28,8 @@ function server.auth_handler(token)
 		error("not the user or invalid password")
 	end
 	
-	return next(server_list), user
+	local server = skynet.call(".serLogin","lua","getfirst_gate")
+	return server, user
 end
 
 function server.login_handler(server, uid, secret)
@@ -44,6 +46,7 @@ function server.login_handler(server, uid, secret)
 
 	local subid = tostring(skynet.call(gameserver, "lua", "login", uid, secret))
 	user_online[uid] = { address = gameserver, subid = subid , server = server}
+	print("subid = ",subid)
 	return subid
 end
 
@@ -51,6 +54,10 @@ local CMD = {}
 
 function CMD.register_gate(server, address)
 	server_list[server] = address
+end
+
+function CMD.getfirst_gate()
+	return next(server_list)
 end
 
 function CMD.logout(uid, subid)
@@ -62,6 +69,7 @@ function CMD.logout(uid, subid)
 end
 
 function server.command_handler(command, ...)
+	print("command = "..command)
 	local f = assert(CMD[command])
 	return f(...)
 end

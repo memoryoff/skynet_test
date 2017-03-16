@@ -23,6 +23,7 @@ function server.login_handler(uid, secret)
 	internal_id = internal_id + 1
 	local id = internal_id	-- don't use internal_id directly
 	local username = msgserver.username(uid, id, servername)
+	print("username = ",username,uid,id,servername)
 
 	-- you can use a pool to alloc new agent
 	local agent = skynet.newservice "msgagent"

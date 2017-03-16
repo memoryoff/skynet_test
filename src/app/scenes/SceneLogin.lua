@@ -20,10 +20,14 @@ local binding = {
 
 SceneLogin.RESOURCE_BINDING = binding
 
+function SceneLogin:username(uid, subid, servername)
+    return string.format("%s@%s#%s", scrypt.base64encode(uid), scrypt.base64encode(servername), scrypt.base64encode(tostring(subid)))
+end
 
 function SceneLogin:sendData(data) 
     data = scrypt.base64encode(data)
-    self.socket_:send(string.pack(">P",data))
+    data = data.."\n"
+    self.socket_:send(data)
 end
 
 function SceneLogin:handler()
@@ -39,18 +43,30 @@ function SceneLogin:handler()
         local hmac = scrypt.hmac64(self.challenge, self.secret)
         -- self.socket_:send(string.pack(">P",scrypt.base64encode(hmac)))
         self:sendData(hmac)
-    elseif self.phase == 4 then
-        local id = self.edtId:getString()
-        local pass = self.edtPass1:getString()
-        local nick = self.edtNick:getString()
-        local sex = 0
-        if self.btMan:isButtonSelected() then
-            sex = 1
-        end
-        local data = id..":"..pass..":"..nick..":"..tostring(sex)
-        print("send register = "..data)
+
+        local data = self.uid..":"..self.pass
+        print("send login = "..data)
         data = scrypt.desencode(self.secret, data)
         self:sendData(data)
+
+    elseif self.phase == 4 then --和游戏服务器连接
+        local data = self:username(self.uid,self.subid,"serGate")
+        print("username = ",data,self.uid,self.subid,"serGate")
+        self.index = 1
+        data = data..":"..self.index
+        data = data..":"..scrypt.base64encode(scrypt.hmac_hash(self.secret,data))
+        self.socket_:connect("127.0.0.1", 9001, false)
+        data = string.pack(">P",data)
+        self.socket_:send(data)
+    elseif self.phase == 5 then -- 已经连上游戏服务器,发送消息格式为data+session(4byte)
+        print("phase5 hanlder")
+        local data = "hello world"
+        data = data..string.pack(">I",1)
+        print(helper.hex(data))
+        self.socket_:send(string.pack(">P",data))
+
+        -- data = string.pack(">PI","0123456789",2)
+        -- self.socket_:send(data)
     end
     
 end 
@@ -73,7 +89,7 @@ end
 
 function SceneLogin:login(event)
     self.uid = self.edtAccounts:getString()
-    self.pass = self.edtAccounts:getString()
+    self.pass = self.edtPassword:getString()
     if self.uid == "" then
         device.showAlert("", app.language.idNo)
         return
@@ -84,6 +100,7 @@ function SceneLogin:login(event)
     end
 
     self.phase = 1
+    self.subid = nil
     self:handler()
 
 end
@@ -98,28 +115,46 @@ end
 
 function SceneLogin:tcpData(event) 
     -- local len,data = string.unpack(event.data,">P")
-    local data = event.data:sub(1,-2)
-    data = crypto.decodeBase64(data)
-    print("receive data:" .. data)
+
     if self.phase == 1 then
+        local data = event.data:sub(1,-2)
+        data = crypto.decodeBase64(data)
+        print("receive data:" .. data)
         self.challenge = data
         self.phase = 2
-        -- self:handler()
+        self:handler()
     elseif self.phase == 2 then
+        local data = event.data:sub(1,-2)
+        data = crypto.decodeBase64(data)
+        print("receive data:" .. data)
         self.secret = scrypt.dhsecret(data, self.clientkey)
         print("sceret is ", scrypt.hexencode(self.secret))
         self.phase = 3
         self:handler()
     elseif self.phase == 3 then
-        if data == "ok" then
+        print("receive data:" ..  event.data,#event.data)
+        local index = event.data:find("200 ")
+        if index then
+            self.subid = event.data:sub(5,-2)
+            self.subid = scrypt.base64decode(self.subid)
             self.phase = 4
             self:handler()
-        else
+        else 
             self.socket_:close()
+            device.showAlert("", app.language.psError)
         end
-        print(data)
     elseif self.phase == 4 then
-        print(data)
+        local len,data = string.unpack(event.data,">P")
+        print("msg from serGate = ",data)
+        if data == "200 OK"then
+            self.phase = 5
+            self:handler()
+        end
+    elseif self.phase == 5 then
+        local len,data = string.unpack(event.data,">P")
+        local str = string.sub(data,1,-6)
+        local other = string.sub(data,-5)
+        print("msg from agent = ",str, string.unpack(other,">bI"))
     end
 end
 
