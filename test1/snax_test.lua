@@ -23,6 +23,38 @@ local room_wait = 1
 local room_ready = 2
 local room_run = 3
 
+local game = {}
+
+function game.init()
+	local card = {}
+	for i=1,4 do
+		for t=1,13 do
+			table.insert(card,i*100+t)
+		end
+	end
+	table.insert(card,501)
+	table.insert(card,502)
+	math.randomseed(tostring(os.time()):reverse())
+	for i=1,#card do
+		local index = math.random(i,#card)
+		card[i],card[index] = card[index],card[i]
+	end
+
+	local player = {}
+	local baseCard = {}
+	player[1] = {}
+	player[2] = {}
+	player[3] = {}
+	for i=1 , 17 do
+		table.insert(player[1],card[i])
+		table.insert(player[2],card[i+17])
+		table.insert(player[3],card[i+34])
+	end
+	for i=52,54 do
+		table.insert(baseCard,card[i])	
+	end
+end
+
 local function getRoom() -- 返回一个空闲的房间
 	if next(roomWaiting) then
 		math.randomseed(tostring(os.time()):reverse())
@@ -40,7 +72,15 @@ local function getRoom() -- 返回一个空闲的房间
 	end
 end
 
-local function initReadyRoom(rid)--为超时设置时间戳
+local function initReadyRoom(rid)
+	roomRunning[rid],roomReady[rid] = roomReady[rid],nil
+	for _,uid in ipairs(roomRunning[rid]) do
+		users[uid].roleState = role_playing
+	end
+end
+
+local function initRunningRoom(rid)--
+
 	local stamp = skynet.now()
 	for _,uid in ipairs(roomReady[rid]) do
 		users[uid].roomState = room_ready
@@ -79,9 +119,12 @@ function response.ready(uid,ready)
 		users[uid].roleState = role_ready
 		users[uid].timeStamp = nil
 		if users[uid].roomState == room_ready then
-			for i,v in ipairs(roomRead[uid]) do
-				print(i,v)
+			for i,v in ipairs(roomReady[uid]) do
+				if users[v].roleState != role_ready then
+					return true
+				end
 			end
+			init
 		end
 		for i,v in ipairs() do
 			print(i,v)
