@@ -23,9 +23,13 @@ local room_wait = 1
 local room_ready = 2
 local room_run = 3
 
+local game_start = 1
+local game_playing = 2
+local game_end = 3
+
 local game = {}
 
-function game.init()
+function game.init(rid)
 	local card = {}
 	for i=1,4 do
 		for t=1,13 do
@@ -40,19 +44,81 @@ function game.init()
 		card[i],card[index] = card[index],card[i]
 	end
 
-	local player = {}
-	local baseCard = {}
-	player[1] = {}
-	player[2] = {}
-	player[3] = {}
-	for i=1 , 17 do
-		table.insert(player[1],card[i])
-		table.insert(player[2],card[i+17])
-		table.insert(player[3],card[i+34])
+	game.data = game.data or {} 
+	game.data[rid] = game.data[rid] or {}
+	local data = game.data[rid]
+	data.ready = false
+	local roleChange = false
+	for i,uid in ipairs(roomRunning[rid]) do
+		if not data[uid] then
+			roleChange = true
+		end
+		data[i] = uid
+		data[uid] = {}
+		data[uid].index = i
+		data[uid].restCard = {}
+		data[uid].playCard = {}
+		data[uid].agent = false
+		data[uid].timeStamp = skynet.now()
+		for t=1 , 17 do
+			table.insert(data[uid].restCard,card[t+(i-1)*17])
+		end
 	end
+	data.baseCard = {}
+	data.lastPlayCard = {}
 	for i=52,54 do
-		table.insert(baseCard,card[i])	
+		table.insert(data.baseCard,card[i])	
 	end
+
+	if not roleChange then
+		data.callIndex = data[data.lastWiner].index
+	else
+		data.callIndex = math.random(1,3)
+	end
+	return data[data.callIndex]
+end
+
+function game.canPlay(rid,uid,card)
+	local data = game.data[rid]
+	assert(uid == data[data.callIndex],"not the uid player")
+	udata = data[uid]
+	for _,v in ipairs(card) do
+		local find = false
+		for _,res in ipairs(udata.restCard) do
+			if res == v then
+				find = true
+				break
+			end
+		end
+		assert(find,"card not find in uid restcard")
+	end
+
+	
+	
+end
+
+function game.play(rid,uid,card)
+	local data = game.data[rid]
+	assert(uid == data[data.callIndex],"not the uid player")
+	udata = data[uid]
+	for _,v in ipairs(card) do
+		local find = false
+		for _,res in ipairs(udata.restCard) do
+			if res == v then
+				find = true
+				break
+			end
+		end
+		assert(find,"card not find in uid rest")
+	end
+
+
+
+	-- body
+end
+
+function game.rule(cardA,cardB)
+	-- body
 end
 
 local function getRoom() -- 返回一个空闲的房间
@@ -73,20 +139,20 @@ local function getRoom() -- 返回一个空闲的房间
 end
 
 local function initReadyRoom(rid)
-	roomRunning[rid],roomReady[rid] = roomReady[rid],nil
-	for _,uid in ipairs(roomRunning[rid]) do
-		users[uid].roleState = role_playing
-	end
-end
-
-local function initRunningRoom(rid)--
-
 	local stamp = skynet.now()
 	for _,uid in ipairs(roomReady[rid]) do
 		users[uid].roomState = room_ready
 		if users[uid].ready == role_unready then
 			users[uid].timeStamp = stamp
 		end
+	end
+
+end
+
+local function initRunningRoom(rid)
+	roomRunning[rid],roomReady[rid] = roomReady[rid],nil
+	for _,uid in ipairs(roomRunning[rid]) do
+		users[uid].roleState = role_playing
 	end
 end
 
@@ -166,8 +232,6 @@ function response.changeRoom(uid)
 
 	roomId = getRoom()
 	enterRoom(roomId,uid)
-	return roomId
-
 	return roomId
 end
 
