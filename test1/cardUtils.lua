@@ -74,7 +74,8 @@ function cardUtils.isCard(cards)
 		    return false  
 		  end  
 		else   
-		  if cardUtils.getValue(c) > 15 or cardUtils.getValue(c) < 1 then  
+			local v = cardUtils.getValue(c)
+		  if v > 15 or v < 1 then  
 		    return false  
 		  end  
 		end  
@@ -94,6 +95,11 @@ end
 
 function cardUtils.getCompFun()
 	return _compFun
+end 
+
+function cardUtils.hasRepeatCard(cards)
+	-- local s = table.concat(cards," ")
+	-- string.
 end 
 
 function cardUtils.sort(cards,sortStr)

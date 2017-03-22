@@ -2,6 +2,8 @@
 -- Author: hxl
 -- Date: 2017-03-21 14:12:02
 --
+
+local cardUtils = require "cardUtils"
 ----各种牌型的对应数字  
 local ERROR_CARD = 0 --错误牌型  
 local SINGLE_CARD = 1 --单牌    
@@ -80,7 +82,7 @@ end
 
 -- 单牌  
 function isSingle(cards)  
-  if not CardUtils.isCards(cards)then   
+  if not cardUtils.isCard(cards)then   
       return false  
   end  
   if 1 == #cards then  
@@ -91,7 +93,7 @@ end
   
 --对子  
 function isDouble(cards)  
-  if not CardUtils.isCards(cards) then   
+  if not cardUtils.isCard(cards) then   
       return false  
   end  
   if 2 == #cards then  
@@ -102,21 +104,11 @@ function isDouble(cards)
   return false  
 end  
   
---王炸  
-function isKingBomb(cards)  
-  if not CardUtils.isCards(cards) or 2 ~= #cards then   
-      return false  
-  end  
-  table.sort(cards)  
-  if cards[1] == 16 and cards[2] == 17 then  
-    return true  
-  end  
-  return false  
-end  
+
   
 --3不带 只要判断三个牌值相等  
 function isThree(cards)  
-  if not CardUtils.isCards(cards) or 3 ~= #cards then   
+  if not cardUtils.isCard(cards) or 3 ~= #cards then   
       return false  
   end  
   if cards[1] == cards[2] and cards[1] == cards[3] then  
@@ -127,7 +119,7 @@ end
   
 --3带1 先对数字排序 再判断带的牌是在那个位置 （4446，3444）再将带的牌移除判断剩下的三个牌是不是 3不带  
 function isThreeOne(cards)  
-  if not CardUtils.isCards(cards) or 4 ~= #cards then   
+  if not cardUtils.isCard(cards) or 4 ~= #cards then   
       return false  
   end  
   table.sort(cards)  
@@ -144,7 +136,7 @@ end
   
 --3带对子  先排序 头尾都是对子而且中间的牌等于头或者尾的值（55577，44555）  
 function isThreeTwo( cards )  
-  if not CardUtils.isCards(cards) or 5 ~= #cards then   
+  if not cardUtils.isCard(cards) or 5 ~= #cards then   
       return false  
   end  
   table.sort(cards)  
@@ -155,10 +147,187 @@ function isThreeTwo( cards )
   end  
   return false  
 end  
+
+-- 4带2个单
+function isBombPairOne(cards)  
+  if not cardUtils.isCard(cards) or  #cards ~= 6 then   
+      return false  
+  end   
+  
+  table.sort(cards)  
+  if cards[1] == cards[2] and cards[1] == cards[3] and cards[1] == cards[4]
+  	return true
+  elseif cards[3] == cards[4] and cards[3] == cards[5] and cards[3] == cards[6]
+  	return true
+  end
+  return false
+end  
+
+-- 4带2个双
+function isBombPairTwo(cards)  
+  if not cardUtils.isCard(cards) or  #cards ~= 6 then   
+      return false  
+  end   
+  
+  table.sort(cards)  
+  if cards[1] == cards[2] and cards[1] == cards[3] and cards[1] == cards[4] and cards[5] == cards[6] and cards[7] == cards[8]
+  	return true
+  elseif cards[1] == cards[2] and cards[3] == cards[4] and cards[5] == cards[6] and cards[5] == cards[7] and cards[5] == cards[8]
+  	return true
+  end
+  return false
+end 
+
+--顺子 只要判断相邻的数字数值是否差1就可以  
+function isConnect(cards)  
+  if not cardUtils.isCard(cards) or 5 > #cards then   
+      return false  
+  end  
+  table.sort(cards)  
+
+	for i = 1, (#cards - 1) do  -- 先判断重复
+	    if cards[i] == cards[i+1] then  
+	      return false  
+	    end  
+	end  
+
+  --大小王不能加入顺子  
+  if cards[#cards] >13 then  
+    return false  
+  end  
+  if cards[1]==2 or cards[2]==2 then -- 2不能加入顺子
+  	return false
+  end
+  if cards[1] == 1 then -- 有1的情况特殊处理
+  	if cards[#cards] ~= 13 then
+  		return false
+  	else
+  		for i = 2, (#cards - 1) do  
+		    if cards[i] ~= cards[i+1] -1 then  
+		      return false  
+		    end  
+  		end  
+  		return true
+  	end
+  end
+  for i = 1, (#cards - 1) do  -- 没有1判断是否为顺子
+    if cards[i] ~= cards[i+1] -1 then  
+      return false  
+    end  
+  end  
+  return true  
+end  
+  
+-- 连对 33445566 1和2 3和4 5和6 7和8 相等 ，2和3 4和5 6和7 相差1   
+function isCompany(cards)  
+  if not cardUtils.isCard(cards) or 6 > #cards or (#cards % 2) ==1 then   
+      return false  
+  end  
+  table.sort(cards)  
+  local len = #cards  
+  for i = 1, (len - 1) do  
+    if (i % 2) ==1 then  
+      if cards[i] ~= cards[i + 1]  then  
+        return false  
+      end   
+    else  
+      if cards[i] ~= cards[i + 1] - 1 then  
+        return false  
+      end  
+    end  
+  end  
+  return true  
+end 
+
+
+-- 飞机不带    
+-- 遍历到三个一组中的第一个的时候判断这组的值是否都相等  
+-- 遍历到三个一组中的最后一个的时候判断和下一组的数值是不是差一  
+function isAircraft(cards)  
+  if not cardUtils.isCard(cards) or 6 > #cards or (#cards % 3) ~=0 then   
+      return false  
+  end   
+  table.sort(cards)  
+  local len = #cards  
+  for i = 1, (len - 1) do  
+    if (i % 3) ==1 then  
+      if cards[i] ~= cards[i + 1] or cards[i + 1] ~= cards[i + 2] then  
+        return false  
+      end   
+    elseif (i % 3) == 0 then  
+      if cards[i] ~= cards[i + 1] - 1 then  
+        return false  
+      end  
+    end  
+  end  
+  return true   
+end  
+  
+  
+  
+
+  
+-- 飞机带翅膀  
+function isAircraftWing(cards)  
+  if not cardUtils.isCard(cards) or 8 > #cards  then   
+      return false  
+  end   
+  if (#cards % 4) ~=0 and (#cards % 5) ~= 0 then  
+    return false  
+  end  
+  -- 先判断有没有炸弹插成三带一的情况如果有那么将其中一个替换为扑克中没有的数（如 19）  
+  table.sort(cards)  
+  local tmp = 0 --记录有几个炸弹 防止有多个炸插成三带一  
+  for k = 1, (#cards - 4) do  
+    if cards[k] == cards[k + 1] and cards[k + 1] == cards[k + 2] and cards[k + 2] == cards[k + 3] then  
+      cards[k + 3] = 19 + tmp  
+      tmp = tmp + 1  
+    end  
+  end  
+  
+  local aircraftCount = math.floor(#cards / 4)  
+  table.sort(cards)  
+  local tmpTable1 = {} --存放飞机的牌  
+  local tmpTable2 = {}  --存放飞机带的牌  
+  -- 先从牌中抽出飞机不带  
+  for pos = 1, #cards - 2 do  
+    if cards[pos] == cards[pos + 1] and cards[pos] == cards[pos + 2] then  
+      table.insert(tmpTable1, cards[pos])  
+      table.insert(tmpTable1, cards[pos + 1])  
+      table.insert(tmpTable1, cards[pos + 2])  
+      tmppos = pos  
+    end  
+  end   
+   -- 再得到带的牌  
+  for k1, v1 in pairs(cards) do  
+    local count = 0  
+    for i = 1, aircraftCount do  
+      if v1 == tmpTable1[i * 3] then  
+        count = count + 1  
+      end  
+    end  
+    if  count == 0 then  
+        table.insert(tmpTable2, v1)  
+    end   
+  end  
+  
+  if not cardUtils.isAircraft(tmpTable1) then  
+    return false  
+  end  
+  if #tmpTable2 == aircraftCount * 2 then  
+    for i = 1, #tmpTable2, 2 do  
+      if tmpTable2[i] ~= tmpTable2[i + 1] then  
+        return false  
+      end  
+    end  
+  end  
+  
+  return true  
+end 
   
 --炸弹  
 function isBomb( cards )  
-  if not CardUtils.isCards(cards) or 4 ~= #cards then   
+  if not cardUtils.isCard(cards) or 4 ~= #cards then   
       return false  
   end  
   if cards[1] == cards[2] and cards[2] == cards[3] and cards[3] == cards[4] then  
@@ -166,6 +335,41 @@ function isBomb( cards )
   end  
   return false  
 end
+
+--王炸  
+function isKingBomb(cards)  
+  if not cardUtils.isCard(cards) or 2 ~= #cards then   
+      return false  
+  end  
+  table.sort(cards)  
+  if cards[1] == 14 and cards[2] == 15 then  
+    return true  
+  end  
+  return false  
+end  
+
+
+
+
+ 
+  
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 function game.canPlay(rid,uid,card)
