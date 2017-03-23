@@ -320,78 +320,6 @@ local function comp(card1,card2) -- 比较单牌card1是否大于card2
 	return compData[card1] > compData[card2]
 end
 
-local function canPlay(cards,lastInfo) -- 如果可以出牌，返回牌的信息
-
-	local res = table.pack(cardType(cards))
-	if res[1] == game.CARD_ERROR then
-		return false
-	end
-	if not lastInfo then -- 没有上一把牌信息表示可以出牌
-		return true,res
-	elseif lastInfo[1] == game.CARD_KINGBOMB then-- 王炸最大，都不能出牌
-		return false
-	end
-	if res[1] == game.CARD_KINGBOMB then
-		return true,res
-	elseif res[1] == game.CARD_BOMB then
-		if lastInfo[1] == game.CARD_BOMB then
-			if comp(res[3],lastInfo[3]) then
-				return true,res
-			end
-		else
-			return true,res
-		end
-	elseif res[1] == lastInfo[1] and res[2] == lastInfo[2] and comp(res[3],lastInfo[3]) then
-		return true,res
-	end
-	return false
-end
- 
-
-function game.init(rid,room)
-	game.data = game.data or {} 
-	game.data[rid] = game.data[rid] or {}
-	local data = game.data[rid]
-	assert(not data.state or data.state == game.STATE_OVER,"the rid game not end")
-	data.state = game.STATE_READY
-	data.players = data.players or {}
- 	data.times = 0
-	
-	local roleChange = false
-	for _,uid in ipairs(room[rid]) do
-		if not data.players[uid] then
-			roleChange = true
-			data.players = {} -- 房间换了新人，置空用户表
-			break
-		end
-	end
-	if not roleChange then -- 选出第一个叫地主的玩家
-		data.curPlayIndex = data[data.winer].index
-	else
-		data.curPlayIndex = math.random(1,3)
-	end
-	
-	local cards = cardUtils.getOriginCard() -- 给每个玩家分配牌
-	for i,uid in ipairs(room[rid]) do
-		data.players[i] = uid
-		data.players[uid] = {}
-		data.players[uid].index = i
-		data.players[uid].resCards = {}
-		-- data.players[uid].playCards = {}
-		data.players[uid].agent = false
-		-- data.players[uid].timeStamp = skynet.now()
-		for t=1 , 17 do
-			table.insert(data.players[uid].resCards,cards[t+(i-1)*17])
-		end
-	end
-	data.baseCards = {}
-	for i=52,54 do
-		table.insert(data.baseCards,cards[i])	
-	end
-	data.pastInfo = {} -- 每一轮打过的牌以及牌的信息
-	return data
-end
-
 
 
 local function cardType(cards)-- 返回类型，数量，关键牌
@@ -468,6 +396,82 @@ local function cardType(cards)-- 返回类型，数量，关键牌
 end
 
 
+local function canPlay(cards,lastInfo) -- 如果可以出牌，返回牌的信息
+
+	local res = table.pack(cardType(cards))
+	if res[1] == game.CARD_ERROR then
+		return false
+	end
+	if not lastInfo then -- 没有上一把牌信息表示可以出牌
+		return true,res
+	elseif lastInfo[1] == game.CARD_KINGBOMB then-- 王炸最大，都不能出牌
+		return false
+	end
+	if res[1] == game.CARD_KINGBOMB then
+		return true,res
+	elseif res[1] == game.CARD_BOMB then
+		if lastInfo[1] == game.CARD_BOMB then
+			if comp(res[3],lastInfo[3]) then
+				return true,res
+			end
+		else
+			return true,res
+		end
+	elseif res[1] == lastInfo[1] and res[2] == lastInfo[2] and comp(res[3],lastInfo[3]) then
+		return true,res
+	end
+	return false
+end
+ 
+
+function game.init(rid,room)
+	game.data = game.data or {} 
+	game.data[rid] = game.data[rid] or {}
+	local data = game.data[rid]
+	assert(not data.state or data.state == game.STATE_OVER,"the rid game not end")
+	data.state = game.STATE_READY
+	data.players = data.players or {}
+ 	data.times = 0
+	
+	local roleChange = false
+	for _,uid in ipairs(room[rid]) do
+		if not data.players[uid] then
+			roleChange = true
+			data.players = {} -- 房间换了新人，置空用户表
+			break
+		end
+	end
+	if not roleChange then -- 选出第一个叫地主的玩家
+		data.curPlayIndex = data[data.winer].index
+	else
+		data.curPlayIndex = math.random(1,3)
+	end
+	
+	local cards = cardUtils.getOriginCard() -- 给每个玩家分配牌
+	for i,uid in ipairs(room[rid]) do
+		data.players[i] = uid
+		data.players[uid] = {}
+		data.players[uid].index = i
+		data.players[uid].resCards = {}
+		-- data.players[uid].playCards = {}
+		data.players[uid].agent = false
+		-- data.players[uid].timeStamp = skynet.now()
+		for t=1 , 17 do
+			table.insert(data.players[uid].resCards,cards[t+(i-1)*17])
+		end
+	end
+	data.baseCards = {}
+	for i=52,54 do
+		table.insert(data.baseCards,cards[i])	
+	end
+	data.pastInfo = {} -- 每一轮打过的牌以及牌的信息
+	return data
+end
+
+
+
+
+
 
 function game.getCurPlayer(rid)
 	local data = game.data[rid]
@@ -486,9 +490,9 @@ end
 function game.callLoard(rid,uid,times) -- 叫地主,times==0表示不叫
 	assert(times >= 0 and times <= 3)
 	local data = game.data[rid]
-	assert(game.state == game.STATE_READY)
+	assert(data.state == game.STATE_READY)
 
-	if data[uid].index ~= data.curPlayIndex then -- 没有轮到当前玩家出牌
+	if data.players[uid].index ~= data.curPlayIndex then -- 没有轮到当前玩家出牌
 		return false
 	end
 	if times > 0 and times <= data.times then -- 不能小于当前倍数
@@ -510,18 +514,24 @@ function game.callLoard(rid,uid,times) -- 叫地主,times==0表示不叫
 			return true,data.state
 		else -- 否则分最高的人成为地主
 			data.state = game.STATE_PLAY
-			data.curPlayIndex = data[data.pastInfo[index]].index
+			data.curPlayIndex = data.players[data.pastInfo[index].uid].index
+			for i=1,#data.baseCards do
+				table.insert(data.players[data.players[data.curPlayIndex]].resCards,data.baseCards[i])
+			end
 			return true,data.state
 		end
 	end
 
 	if times == 3 then -- 叫三分的人成为地主
 		data.state = game.STATE_PLAY
-		data.curPlayIndex = data[uid].index
+		data.curPlayIndex = data.players[uid].index
+		for i=1,#data.baseCards do
+			table.insert(data.players[data.players[data.curPlayIndex]].resCards,data.baseCards[i])
+		end
 	else
 		data.curPlayIndex = data.curPlayIndex % 3 + 1
 	end
-
+	
 	return true,data.state
 end
 
@@ -539,7 +549,7 @@ end
 function game.play(rid,uid,cards) --返回第一个boolean表示出牌是否成功，第二个表示是否结束比赛并获胜
 	assert(type(cards) == "table")
 	local data = game.data[rid]
-	if data[uid].index ~= data.curPlayIndex then -- 没有轮到当前玩家出牌
+	if data.players[uid].index ~= data.curPlayIndex then -- 没有轮到当前玩家出牌
 		return false
 	end
 	local lastInfo = data.pastInfo[#data.pastInfo]
@@ -571,6 +581,40 @@ function game.play(rid,uid,cards) --返回第一个boolean表示出牌是否成�
 		return true,false
 	end
 	return false
+end
+
+function game.tip(cards,compInfo)
+	assert(type(cards) == "table")
+	local val = {}
+	local oldIndex = {}
+	local newIndex = {}
+	local res = {}
+	for i=1,#cards do
+		index[cards[i]] = i
+		val[#val+1] = cards[i]
+	end
+	table.sort(val)
+	for i=1,#val do
+		newIndex[#newIndex+1] = oldIndex[val[i]]
+		val[i] = cardUtils.getValue(val[i])
+	end
+
+	if compInfo[1] == game.CARD_ONE then
+		for i=1,#val do
+			if comp(val[i],compInfo[3]) then
+				res[#res+1] = {newIndex[i]}
+			end
+		end
+	elseif compInfo[1] == game.CARD_PAIR then
+		for i=1,#val-1 do
+			if val[i] == val[i+1] then
+				if comp(val[i],compInfo[3]) then
+					res[#res+1] = {newIndex[i]}
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_THREE then
+	end
 end
 
 return game
