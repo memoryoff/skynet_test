@@ -585,6 +585,108 @@ end
 
 function game.tip(cards,compInfo)
 	assert(type(cards) == "table")
+
+	local key = {}
+	local num = {{},{},{},{}}
+	local res = {}
+	for i=1,15 do
+		key[i] = {}
+	end
+	for _,v in ipairs(cards) do
+		local value = v%100
+		table.insert(key[value],v)
+	end
+	for i=1,#key do
+		if #key[i] == 1 then
+			table.insert(num[1],{[i]=key[i][1])
+		elseif #key[i] == 2 then
+			table.insert(num[2],{key[i][1],key[i][2]})
+		elseif #key[i] == 3 then
+			table.insert(num[3],{key[i][1],key[i][2],key[i][3]})
+		elseif #key[i] == 4 then
+			table.insert(num[4],{key[i][1],key[i][2],key[i][3],key[i][4]})
+	end
+
+	local hasKindBomb = #key[14]==1 and #key[15]==1
+	local kingBomb = nil
+	if hasKingBomb then
+		kingBomb = {514,515}
+	end
+
+	if compInfo[1] == game.CARD_KINGBOMB then
+		return res
+	elseif compInfo[1] == game.CARD_BOMB then
+		if #num[4] ~= 0 then
+			for _,v in pairs(num[4]) do
+				if k > compInfo[3] then
+					table.insert(res,v)
+				end
+			end
+		end
+		table.insert(res,kingBomb)
+		return res
+	elseif compInfo[1] == game.CARD_ONE then
+		for i=1,#key do
+			if #key[i] ~= 0 then
+				local v = cardUtils.getValue(key[i][1])
+				if comp(v,compInfo[3]) then
+					table.insert(res,key[i][1])
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_PAIR then
+		for i=1,#num[2] do
+			local v = cardUtils.getValue(num[2][i][1])
+			if comp(v,compInfo[3]) then
+				table.insert(res,num[2][i])
+			end
+		end
+	elseif compInfo[1] == game.CARD_THREE then
+		for i=1,#num[3] do
+			local v = cardUtils.getValue(num[3][i][1])
+			if comp(v,compInfo[3]) then
+				table.insert(res,num[3][i])
+			end
+		end
+	elseif compInfo[1] == game.CARD_THREEONE then
+		for i=1,#num[3] do
+			local v = cardUtils.getValue(num[3][i][1])
+			if comp(v,compInfo[3]) then
+				table.insert(res,num[3][i])
+			end
+		end
+	end
+
+	end
+
+
+
+
+
+
+
+
+
+
+	game.CARD_ERROR = 0--错误牌型  
+game.CARD_ONE = 1--单牌    
+game.CARD_PAIR = 2--对子    
+game.CARD_THREE = 3--3不带    
+game.CARD_THREEONE = 4--3带1    
+game.CARD_THREEPAIR = 5--3带2    
+game.CARD_FOURTWO = 6--四个带2张单牌或两个对子 
+game.CARD_CONNECT = 7--顺子    
+game.CARD_COMPANY = 8--连对   
+game.CARD_AIRCRAFT = 9--飞机不带    
+game.CARD_AIRCRAFTWING = 10--飞机带单牌或对子  
+game.CARD_BOMB = 11--炸弹    
+game.CARD_KINGBOMB = 12--王炸  
+
+
+
+
+
+
 	local val = {}
 	local oldIndex = {}
 	local newIndex = {}

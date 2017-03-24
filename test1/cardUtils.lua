@@ -164,7 +164,7 @@ function cardUtils.sort(cards,sortStr)
 			buf[i] = {}
 		end
 		for _,v in ipairs(cards) do
-			value = v%100
+			local value = v%100
 			table.insert(buf[value],v)
 		end
 		for _,v in ipairs(buf) do
