@@ -583,9 +583,21 @@ function game.play(rid,uid,cards) --返回第一个boolean表示出牌是否成�
 	return false
 end
 
+local function sub(t1,t2)
+	for i=1,#t2 do
+		for t=1,#t1 do
+			if t2[i] == t1[t] then
+				table.remove(t1,t)
+				break
+			end
+		end
+	end
+end
+
 function game.tip(cards,compInfo)
 	assert(type(cards) == "table")
 
+	local oCards = {}
 	local key = {}
 	local num = {{},{},{},{}}
 	local res = {}
@@ -593,18 +605,39 @@ function game.tip(cards,compInfo)
 		key[i] = {}
 	end
 	for _,v in ipairs(cards) do
+		table.insert(oCards,v)
+	end
+	local sortFun = function (c1,c2)
+		local v1 = cardUtils.getValue(c1)
+		local v2 = cardUtils.getValue(c2)
+		if v1 == v2 then
+			return c1 < c2			
+		elseif comp(v2,v1) then
+			return true
+		end
+		return false
+	end
+	table.sort(oCards,sortFun)
+
+	for _,v in ipairs(oCards) do
 		local value = v%100
 		table.insert(key[value],v)
 	end
-	for i=1,#key do
-		if #key[i] == 1 then
-			table.insert(num[1],{[i]=key[i][1])
-		elseif #key[i] == 2 then
+	for i=1,#cardOder do
+		if #key[cardOder[i]] == 1 then
+			table.insert(num[1],key[i][1])
+		elseif #key[cardOder[i]] == 2 then
 			table.insert(num[2],{key[i][1],key[i][2]})
-		elseif #key[i] == 3 then
+			table.insert(num[1],key[i][1])
+		elseif #key[cardOder[i]] == 3 then
 			table.insert(num[3],{key[i][1],key[i][2],key[i][3]})
-		elseif #key[i] == 4 then
+			table.insert(num[2],{key[i][1],key[i][2]})
+			table.insert(num[1],key[i][1])
+		elseif #key[cardOder[i]] == 4 then
 			table.insert(num[4],{key[i][1],key[i][2],key[i][3],key[i][4]})
+			table.insert(num[3],{key[i][1],key[i][2],key[i][3]})
+			table.insert(num[2],{key[i][1],key[i][2]})
+			table.insert(num[1],key[i][1])
 	end
 
 	local hasKindBomb = #key[14]==1 and #key[15]==1
@@ -617,106 +650,311 @@ function game.tip(cards,compInfo)
 		return res
 	elseif compInfo[1] == game.CARD_BOMB then
 		if #num[4] ~= 0 then
-			for _,v in pairs(num[4]) do
-				if k > compInfo[3] then
+			for _,v in ipairs(num[4]) do
+				if comp(cardUtils.getValue(v[1]),compInfo[3]) then
 					table.insert(res,v)
 				end
 			end
 		end
 		table.insert(res,kingBomb)
 		return res
-	elseif compInfo[1] == game.CARD_ONE then
-		for i=1,#key do
-			if #key[i] ~= 0 then
-				local v = cardUtils.getValue(key[i][1])
-				if comp(v,compInfo[3]) then
-					table.insert(res,key[i][1])
+	elseif compInfo[1] == game.CARD_ONE or compInfo[1] == game.CARD_PAIR or compInfo[1] == game.CARD_THREE then
+		for _,v in ipairs(num[compInfo[1]]) do
+			if comp(cardUtils.getValue(v[1]),compInfo[3]) then
+				table.insert(res,v)
+			end
+		end
+	elseif compInfo[1] == game.CARD_THREEONE or compInfo[1] == game.CARD_THREEPAIR then
+		for _,v in ipairs(num[3]) do
+			if comp(cardUtils.getValue(v[1]),compInfo[3]) then
+				table.insert(res,v)
+			end
+		end
+
+		if compInfo[1] == game.CARD_THREEONE then
+			for i=#res,1 do
+				sub(oCards,res[i])
+				if #oCards > 0 then
+					local temp = oCards[i]
+					for _,tmp = res[i] do -- 还原
+						table.insert(oCards,tmp)
+					end
+					table.sort(oCards,sortFun)
+					table.insert(res[i],temp)
+					break
+				else
+					table.remove(res,i)
+				end
+			end
+		else
+			for i=#res,1 do
+				local find = false
+				for _,p in ipairs(num[2]) do
+					if cardUtils.getValue(p[1]) ~= cardUtils.getValue(res[i][1]) then
+						find = true
+						table.insert(res[i],p)
+						break
+					end
+				end
+				if not find then
+					table.remove(res,i)
 				end
 			end
 		end
-	elseif compInfo[1] == game.CARD_PAIR then
-		for i=1,#num[2] do
-			local v = cardUtils.getValue(num[2][i][1])
-			if comp(v,compInfo[3]) then
-				table.insert(res,num[2][i])
-			end
-		end
-	elseif compInfo[1] == game.CARD_THREE then
-		for i=1,#num[3] do
-			local v = cardUtils.getValue(num[3][i][1])
-			if comp(v,compInfo[3]) then
-				table.insert(res,num[3][i])
-			end
-		end
-	elseif compInfo[1] == game.CARD_THREEONE then
-		for i=1,#num[3] do
-			local v = cardUtils.getValue(num[3][i][1])
-			if comp(v,compInfo[3]) then
-				table.insert(res,num[3][i])
-			end
-		end
-	end
-
-	end
-
-
-
-
-
-
-
-
-
-
-	game.CARD_ERROR = 0--错误牌型  
-game.CARD_ONE = 1--单牌    
-game.CARD_PAIR = 2--对子    
-game.CARD_THREE = 3--3不带    
-game.CARD_THREEONE = 4--3带1    
-game.CARD_THREEPAIR = 5--3带2    
-game.CARD_FOURTWO = 6--四个带2张单牌或两个对子 
-game.CARD_CONNECT = 7--顺子    
-game.CARD_COMPANY = 8--连对   
-game.CARD_AIRCRAFT = 9--飞机不带    
-game.CARD_AIRCRAFTWING = 10--飞机带单牌或对子  
-game.CARD_BOMB = 11--炸弹    
-game.CARD_KINGBOMB = 12--王炸  
-
-
-
-
-
-
-	local val = {}
-	local oldIndex = {}
-	local newIndex = {}
-	local res = {}
-	for i=1,#cards do
-		index[cards[i]] = i
-		val[#val+1] = cards[i]
-	end
-	table.sort(val)
-	for i=1,#val do
-		newIndex[#newIndex+1] = oldIndex[val[i]]
-		val[i] = cardUtils.getValue(val[i])
-	end
-
-	if compInfo[1] == game.CARD_ONE then
-		for i=1,#val do
-			if comp(val[i],compInfo[3]) then
-				res[#res+1] = {newIndex[i]}
-			end
-		end
-	elseif compInfo[1] == game.CARD_PAIR then
-		for i=1,#val-1 do
-			if val[i] == val[i+1] then
-				if comp(val[i],compInfo[3]) then
-					res[#res+1] = {newIndex[i]}
+	elseif compInfo[1] == game.CARD_FOURTWO then
+		for i,v in ipairs(num[4]) do
+			local value = cardUtils.getValue(v[1])
+			if comp(value,compInfo[3]) then
+				if compInfo[2] == 6 then
+					sub(oCards,v)
+					if #oCards > 1 then
+						table.insert(res,v)
+						table.insert(res[#res],oCards[1])
+						table.insert(res[#res],oCards[2])
+					end
+					for _,c in ipairs(v)
+						table.insert(oCards,c)
+					end
+					table.sort(oCards,sortFun)
+				else
+					if #num[2] > 2 then
+						local tmp = nil
+						for i,v in ipairs(num[2]) do
+							if cardUtils.getValue(v[1]) == value then
+								tmp = v
+								table.remove(num[2],i)
+								break
+							end
+						end
+						table.insert(res,v)
+						table.insert(res[#res],num[2][1])
+						table.insert(res[#res],num[2][2])
+						table.insert(num[2],tmp)
+					end
 				end
 			end
 		end
-	elseif compInfo[1] == game.CARD_THREE then
+	elseif compInfo[1] == game.CARD_CONNECT then
+		if compInfo[3] + compInfo[2] - 1 < 14 then -- 小于A
+			for i=1,#num[1] - compInfo[2]+1 do
+				if cardUtils.getValue(num[1][i]) > compInfo[2] and cardUtils.getValue(num[1][i+compInfo[2]-1])<14  then
+					local ibreak = false
+					for t=0,compInfo[2]-2 do
+						local v1 = cardUtils.getValue(num[1][i+t])
+						local v2 = cardUtils.getValue(num[1][i+t+1])
+						if v1 == 1 then
+							v1 = 14
+						end
+						if v2 == 1 then
+							v2 = 14
+						end
+						if  v1 ~= v2-1 then
+							ibreak = true
+							break
+						end
+					end
+					if not ibreak then
+						table.insert(res,{})
+						for t=0,compInfo[2]-1 do
+							table.insert(res[#res],num[1][i+t])
+						end
+					end
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_COMPANY then
+		if compInfo[3] + compInfo[2]/2 - 1 < 14 then -- 小于A
+			for i=1,#num[2] - compInfo[2]/2+1 do
+				if cardUtils.getValue(num[2][i][1]) > compInfo[2] and cardUtils.getValue(num[2][i+compInfo[2]/2-1][1])<14  then
+					local ibreak = false
+					for t=0,compInfo[2]-2,2 do
+						local v1 = cardUtils.getValue(num[2][i+t][1])
+						local v2 = cardUtils.getValue(num[2][i+t+2][1])
+						if v1 == 1 then
+							v1 = 14
+						end
+						if v2 == 1 then
+							v2 = 14
+						end
+						if  v1 ~= v2-1 then
+							ibreak = true
+							break
+						end
+					end
+					if not ibreak then
+						table.insert(res,{})
+						for t=0,compInfo[2]-2,2 do
+							table.insert(res[#res],num[2][i+t][1])
+							table.insert(res[#res],num[2][i+t][2])
+						end
+					end
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_AIRCRAFT then
+		if compInfo[3] + compInfo[2]/3 - 1 < 14 then -- 小于A
+			for i=1,#num[3] - compInfo[2]/3+1 do
+				if cardUtils.getValue(num[3][i][1]) > compInfo[2] and cardUtils.getValue(num[3][i+compInfo[2]/3-1][1])<14  then
+					local ibreak = false
+					for t=0,compInfo[2]-3,3 do
+						local v1 = cardUtils.getValue(num[3][i+t][1])
+						local v2 = cardUtils.getValue(num[3][i+t+3][1])
+						if v1 == 1 then
+							v1 = 14
+						end
+						if v2 == 1 then
+							v2 = 14
+						end
+						if  v1 ~= v2-1 then
+							ibreak = true
+							break
+						end
+					end
+					if not ibreak then
+						table.insert(res,{})
+						for t=0,compInfo[2]-3,3 do
+							table.insert(res[#res],num[3][i+t][1])
+							table.insert(res[#res],num[3][i+t][2])
+							table.insert(res[#res],num[3][i+t][3])
+						end
+					end
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_AIRCRAFT then
+		if compInfo[3] + compInfo[2]/3 - 1 < 14 then -- 小于A
+			for i=1,#num[3] - compInfo[2]/3+1 do
+				if cardUtils.getValue(num[3][i][1]) > compInfo[2] and cardUtils.getValue(num[3][i+compInfo[2]/3-1][1])<14  then
+					local ibreak = false
+					for t=0,compInfo[2]-3,3 do
+						local v1 = cardUtils.getValue(num[3][i+t][1])
+
+						local v2 = cardUtils.getValue(num[3][i+t+3][1])
+						if v1 == 1 then
+							v1 = 14
+						end
+						if v2 == 1 then
+							v2 = 14
+						end
+						if  v1 ~= v2-1 then
+							ibreak = true
+							break
+						end
+					end
+					if not ibreak then
+						table.insert(res,{})
+						for t=0,compInfo[2]/3 do
+							table.insert(res[#res],num[3][i+t][1])
+							table.insert(res[#res],num[3][i+t][2])
+							table.insert(res[#res],num[3][i+t][3])
+						end
+					end
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_AIRCRAFTWING then
+		local keyNum = 0
+		local otherNum = 0
+		local findSingle = true
+		if compInfo[2] == 8 or compInfo[2] == 12 then
+			otherNum = keyNum = compInfo[2]/4
+		elseif compInfo[2] == 10 or compInfo[2] == 15 then
+			otherNum = keyNum = compInfo[2]/5
+			findSingle = false
+		end
+		
+		if compInfo[3] + keyNum - 1 < 14 then -- 小于A
+			for i=1,#num[3] - keyNum+1 do
+				if cardUtils.getValue(num[3][i][1]) > compInfo[2] and cardUtils.getValue(num[3][i+keyNum-1][1])<14  then
+					local ibreak = false
+					for t=0,keyNum-1 do
+						local v1 = cardUtils.getValue(num[3][i+t][1])
+						local v2 = cardUtils.getValue(num[3][i+t+1][1])
+						if v1 == 1 then
+							v1 = 14
+						end
+						if v2 == 1 then
+							v2 = 14
+						end
+						if  v1 ~= v2-1 then
+							ibreak = true
+							break
+						end
+					end
+					if not ibreak then
+						table.insert(res,{})
+						for t=0,keyNum-1 do
+							table.insert(res[#res],num[3][i+t][1])
+							table.insert(res[#res],num[3][i+t][2])
+							table.insert(res[#res],num[3][i+t][3])
+						end
+					end
+				end
+			end
+		end
+		if #res > 0 then
+			for i=1,#res do
+				if findSingle then
+					sub(oCards,res[i])
+					for t=otherNum,1 do
+						table.insert(res[i],oCards[t])
+						table.remove(oCards,t)
+					end
+					for t=1,#res[i] do
+						table.insert(oCards,res[i][t])
+					end
+					table.sort(oCards,sortFun)
+				else
+					for i=1,#res do
+						for r=1,keyNum do
+							 for t=1,#num[2] do
+							 	if cardUtils.getValue(num[2][t][1]) == cardUtils.getValue(res[i][r*3]) then
+							 		table.remove(num[2],t)
+							 		break
+							 	end
+							 end
+						end
+						if #num[2] >= otherNum then
+							for t=otherNum,1 do
+								table.insert(res[i],num[2][t][1])
+								table.insert(res[i],num[2][t][2])
+								table.remove(num[2],t)
+							end
+						else
+							res = {}
+							break
+						end
+						for r=1,#res[i] do
+							local v1 = cardUtils.getValue(res[r])
+							local v2 = cardUtils.getValue(res[r+1])
+							local v3 = cardUtils.getValue(res[r+2])
+							table.insert(num[2],{res[r],res[r+1]})
+							if v1 == v2 and v1 == v3 then
+								r = r+2
+							else
+								r = r+1
+							end
+						end
+					end
+				end
+			end
+		end
+	elseif compInfo[1] == game.CARD_BOMB then
+		for i=1,#num[4] do
+			if comp(cardUtils.getValue(num[4][i][1]),compInfo[3]) then
+				table.insert(res,num[4][i])
+			end
+		end
 	end
+
+	if compInfo[1] ~= game.CARD_BOMB then
+		for i=1,#num[4] do
+			table.insert(res,num[4][i])
+		end
+	end
+	table.insert(res,kingBomb)
+	return res
 end
 
 return game
+
