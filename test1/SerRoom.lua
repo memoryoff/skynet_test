@@ -12,7 +12,7 @@ local roomId = 0
 local maxNum = 3000
 local curNum = 0
 local readyTime = 30 -- 超时时间
-local users = {} -- uid = {房号,房间状态标记，玩家状态标记,时间戳}
+local users = {} -- uid = {房号，玩家状态标记,时间戳}
 local roomWaiting = {}
 local roomReady = {}
 local roomRunning = {}
@@ -32,11 +32,22 @@ local game_end = 3
 local table = {}
 
 function table.init(rid)
-
 	if #roomRunning[rid] ~= 3 or not game.isOver(rid)then
 		return false
 	end
 	return game.init(rid,roomRunning)
+end
+
+function table.cardLoard( ... )
+	-- body
+end
+
+function table.cardplay( ... )
+	-- body
+end
+
+function table.cardPass( ... )
+	-- body
 end
 
 
@@ -58,28 +69,32 @@ local function getRoom() -- 返回一个空闲的房间
 end
 
 local function initReadyRoom(rid)
+	roomReady[rid],roomWaiting[rid]= roomWaiting[rid],nil
 	local stamp = skynet.now()
 	for _,uid in ipairs(roomReady[rid]) do
-		users[uid].roomState = room_ready
-		if users[uid].ready == role_unready then
-			users[uid].timeStamp = stamp
-		end
+		-- if users[uid].ready == role_unready then
+		-- 	users[uid].timeStamp = stamp
+		-- end
+		users[uid].timeStamp = stamp
 	end
 
 end
 
-local function initRunningRoom(rid)
+local function initRunningRoom(rid) -- 正式打牌，返回第一个出牌的人的uid
 	roomRunning[rid],roomReady[rid] = roomReady[rid],nil
 	for _,uid in ipairs(roomRunning[rid]) do
-		users[uid].roleState = role_playing
+		users[uid].state = role_playing
 	end
+	return table.init(rid)
 end
 
 local function enterRoom(rid,uid)
-	table.insert(roomWaiting[rid],uid)
-	users[uid] = {roomId = rid,roomState = room_wait,roleState = role_unready}
 	if #roomWaiting[rid] >= 3 then
-		roomReady[rid],roomWaiting[rid]= roomWaiting[rid],nil
+		return false
+	end
+	table.insert(roomWaiting[rid],uid)
+	users[uid] = {roomId = rid,state = role_unready}
+	if #roomWaiting[rid] >= 3 then
 		initReadyRoom(rid)
 	end
 end
@@ -103,25 +118,23 @@ end
 
 function response.ready(uid,ready)
 	assert(users[uid],"uid not in room")
-	if users[uid].roleState == role_playing then
+	if users[uid].state == role_playing then
 		return false
 	end
 	if ready then
-		users[uid].roleState = role_ready
+		users[uid].state = role_ready
 		users[uid].timeStamp = nil
-		if users[uid].roomState == room_ready then
-			for i,v in ipairs(roomReady[uid]) do
-				if users[v].roleState != role_ready then
+		if roomReady[users[uid].roomId] then
+			for _,id in ipairs(roomReady[users[uid].roomId]) do
+				if users[id].state != role_ready then
 					return true
 				end
 			end
-			init
-		end
-		for i,v in ipairs() do
-			print(i,v)
+			local firstUid = initRunningRoom(users[uid].roomId) -- 如果所有人都已经准备，一桌牌正式开始
+			return true,firstUid
 		end
 	else
-		users[uid].roleState = role_unready
+		users[uid].state = role_unready
 		users[uid].timeStamp = skynet.now()
 	end
 	return true
@@ -129,35 +142,112 @@ end
 
 function response.changeRoom(uid)
 	assert(users[uid],"uid not in room")
+	if users[uid].state == role_playing then
+		return false
+	end
 
-	local roomState = users[uid].roomState
-	local roomId = users[uid].roomId
-	if roomState == room_wait then
-		for i,v in ipairs(roomWaiting[roomId]) do
+	local rid = users[uid].roomId
+	if roomWaiting[rid] then
+		for i,v in ipairs(roomWaiting[rid]) do
 			if v == uid then
-				table.remove(roomWaiting[roomId],i)
-				if #roomWaiting[roomId] == 0 then
-					roomWaiting[roomId] = nil
+				table.remove(roomWaiting[rid],i)
+				if #roomWaiting[rid] == 0 then
+					roomWaiting[rid] = nil
 				end
 				break
 			end
 		end
 		
-	elseif roomState == room_ready then
-		for i,v in ipairs(roomReady[roomId]) do
+	elseif roomReady[rid] then
+		for i,v in ipairs(roomReady[rid]) do
 			if v == uid then
-				table.remove(roomReady[roomId],i)
-				roomWaiting[roomId],roomReady[roomId] = roomReady[roomId],nil
+				table.remove(roomReady[rid],i)
+				roomWaiting[rid],roomReady[rid] = roomReady[rid],nil
 				break
 			end
 		end
-	elseif roomState == room_run then
-
+	elseif roomRunning[rid] then
+		return false
 	end
 
-	roomId = getRoom()
-	enterRoom(roomId,uid)
-	return roomId
+	rid = getRoom()
+	enterRoom(rid,uid)
+	return rid
+end
+
+function response.cardCallLoard(uid,times)
+	assert(users[uid],"uid not in room")
+	if users[uid].state == role_playing then
+		return false
+	end
+	local rid = users[uid].roomId
+	if not game.isReady(rid) then
+		return false
+	end
+
+	local ok,gameState = game.callLoard(rid,uid,times)
+	local res = {}
+	res.ok = ok
+	if ok then
+		res.gameState = gameState
+		res.nextPlayer = game.getCurPlayer(rid)
+	end
+	return res
+end
+
+function response.cardPlay(uid)
+	assert(users[uid],"uid not in room")
+	if users[uid].state == role_playing then
+		return false
+	end
+	local rid = users[uid].roomId
+	if not game.isReady(rid) then
+		return false
+	end
+
+	local ok,gameState = game.callLoard(rid,uid,times)
+	local res = {}
+	res.ok = ok
+	if ok then
+		res.gameState = gameState
+		res.nextPlayer = game.getCurPlayer(rid)
+	end
+	return res
+end
+
+function response.cardPass(uid)
+	assert(users[uid],"uid not in room")
+	if users[uid].state == role_playing then
+		return false
+	end
+
+	local rid = users[uid].roomId
+	if roomWaiting[rid] then
+		for i,v in ipairs(roomWaiting[rid]) do
+			if v == uid then
+				table.remove(roomWaiting[rid],i)
+				if #roomWaiting[rid] == 0 then
+					roomWaiting[rid] = nil
+				end
+				break
+			end
+		end
+		
+	elseif roomReady[rid] then
+		for i,v in ipairs(roomReady[rid]) do
+			if v == uid then
+				table.remove(roomReady[rid],i)
+				roomWaiting[rid],roomReady[rid] = roomReady[rid],nil
+				break
+			end
+		end
+	elseif roomRunning[rid] then
+		return false
+	end
+
+	rid = getRoom()
+	enterRoom(rid,uid)
+	return rid
 end
 
 

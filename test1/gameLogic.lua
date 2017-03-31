@@ -483,6 +483,22 @@ function game.isOver(rid)
 	return not data.state or data.state==game.STATE_OVER
 end
 
+function game.isReady(rid)
+	local data = game.data[rid]
+	if data.state and data.state == game.STATE_READY then
+		return true
+	end
+	return false
+end
+
+function game.isRun(rid)
+	local data = game.data[rid]
+	if data.state and data.state == game.STATE_PLAY then
+		return true
+	end
+	return false
+end
+
 function game.getTimes(rid)
 	return game.data[rid].times
 end
