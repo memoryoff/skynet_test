@@ -14,10 +14,10 @@ local _defaultCompFun = function (card1,card2) -- 默认降序排序
 		return false
 	end
 
-	local suit1 = cardUtils.getSuit(card1)
-	local suit2 = cardUtils.getSuit(card2)
-	return suit1 > suit2
-
+	-- local suit1 = cardUtils.getSuit(card1)
+	-- local suit2 = cardUtils.getSuit(card2)
+	-- return suit1 > suit2
+	return card1 > card2
 end
 
 local _compFun = _defaultCompFun

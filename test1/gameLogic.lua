@@ -111,7 +111,7 @@ function isFourTwo(cards)
   	end
   end
   if #four > 0 and #other == 2 or (other[1]==other[2] and other[3]==other[4])then
-  	return true,four[1]
+  	return four[1]
   end
   return false
 end  
@@ -144,7 +144,7 @@ end
 --   return false
 -- end 
 
---顺子 只要判断相邻的数字数值是否差1就可以  
+--顺子 只要判断相邻的数字数值是否差1就可以,默认从A开始排序
 local function isConnect(cards)  
   if 5 > #cards then   
       return false  
@@ -428,10 +428,10 @@ function game.init(rid,room)
 	game.data = game.data or {} 
 	game.data[rid] = game.data[rid] or {}
 	local data = game.data[rid]
-	assert(not data.state or data.state == game.STATE_OVER,"the rid game not end")
+	assert(not data.state and data.state == game.STATE_OVER,"the rid game not end")
 	data.state = game.STATE_READY
 	data.players = data.players or {}
- 	data.times = 0
+ 	data.times = 0 -- 倍数
 	
 	local roleChange = false
 	for _,uid in ipairs(room[rid]) do
@@ -465,7 +465,7 @@ function game.init(rid,room)
 		table.insert(data.baseCards,cards[i])	
 	end
 	data.pastInfo = {} -- 每一轮打过的牌以及牌的信息
-	return data
+	return data.players[data.curPlayIndex]
 end
 
 
