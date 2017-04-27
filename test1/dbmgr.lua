@@ -473,7 +473,7 @@ function CMD.load(tbname,where)
 			sql = string.format("select * from %s limit %d, 1000", tbname, offset)
 		end
 
-		helper.dump(sql)
+		-- helper.dump(sql)
 
 		local rs = skynet.call("mysqlpool", "lua", "execute", sql)
 

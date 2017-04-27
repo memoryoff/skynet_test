@@ -29,6 +29,7 @@ skynet.start(function()
 	})
 
 	local login = skynet.newservice("SerLogin")
+	
 
 	local gate = skynet.newservice("SerGame",login)
 	skynet.call(gate,"lua","open",{
